@@ -42,9 +42,9 @@ RUN dbus-uuidgen > /etc/machine-id
 RUN rosdep update
 
 # Setup catkin workspace
-WORKDIR /root
-RUN mkdir -p /root/sim_ws/src/rpg_esim
-WORKDIR /root/sim_ws
+WORKDIR /home/user
+RUN mkdir -p /home/user/sim_ws/src/rpg_esim
+WORKDIR /home/user/sim_ws
 RUN catkin init && \
     catkin config --extend /opt/ros/kinetic --cmake-args -DCMAKE_BUILD_TYPE=Release
 
@@ -52,17 +52,17 @@ RUN catkin init && \
 COPY . src/rpg_esim/.
 
 # Import additional dependencies
-WORKDIR /root/sim_ws/src
+WORKDIR /home/user/sim_ws/src
 RUN vcs-import < rpg_esim/dependencies.yaml
 
 # Patch SIMD flags if on ARM (e.g., macOS M1/M2)
 RUN if [ "$(uname -m)" = "aarch64" ] || [ "$(uname -m)" = "arm64" ]; then \
     echo "Patching SIMD flags for ARM architecture..."; \
-    sed -i '20,25 s/^/#/' /root/sim_ws/src/ze_oss/ze_cmake/cmake/modules/ze_setup.cmake; \
+    sed -i '20,25 s/^/#/' /home/user/sim_ws/src/ze_oss/ze_cmake/cmake/modules/ze_setup.cmake; \
     fi
 
 # Disable components we don't need
-WORKDIR /root/sim_ws/src/ze_oss
+WORKDIR /home/user/sim_ws/src/ze_oss
 RUN touch imp_3rdparty_cuda_toolkit/CATKIN_IGNORE \
     imp_app_pangolin_example/CATKIN_IGNORE \
     imp_benchmark_aligned_allocator/CATKIN_IGNORE \
@@ -77,14 +77,16 @@ RUN touch imp_3rdparty_cuda_toolkit/CATKIN_IGNORE \
     ze_imu/CATKIN_IGNORE \
     ze_trajectory_analysis/CATKIN_IGNORE
 
-WORKDIR /root/sim_ws
+WORKDIR /home/user/sim_ws
 
 # build automatically
 RUN catkin build esim_ros
 
 # add shortcut to source the environment
-RUN echo "source ~/sim_ws/devel/setup.bash" >> ~/setupeventsim.sh && \
-    chmod +x ~/setupeventsim.sh && \
-    echo "alias ssim='source ~/setupeventsim.sh'" >> ~/.bashrc
+RUN echo "source /home/user/sim_ws/devel/setup.bash" >> /home/user/setupeventsim.sh && \
+    chmod +x /home/user/setupeventsim.sh && \
+    echo "alias ssim='source /home/user/setupeventsim.sh'" >> /root/.bashrc
+
+WORKDIR /home/user
 
 CMD ["bash"]
