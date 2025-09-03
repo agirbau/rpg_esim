@@ -1,4 +1,4 @@
-FROM ros:kinetic-ros-base
+FROM ros:kinetic
 
 # Set proxy (if needed)
 ENV no_proxy="10.81.0.0/16,172.16.0.0/16,localhost"
@@ -8,7 +8,7 @@ ENV https_proxy="http://10.81.247.64:8080"
 # Install system and ROS dependencies
 RUN apt-get update && apt-get install -y \
     git wget curl build-essential cmake \
-    vim \
+    vim x11-apps \
     autoconf automake libtool \
     libopencv-dev \
     libassimp-dev \
@@ -24,7 +24,19 @@ RUN apt-get update && apt-get install -y \
     ros-kinetic-pcl-ros \
     libproj-dev libglfw3 libglfw3-dev libglm-dev \
     ros-kinetic-hector-trajectory-server \
+    ros-kinetic-opencv3 \
+    libusb-1.0-0-dev \
+    ros-kinetic-camera-info-manager \
+    ros-kinetic-image-view \
+    python3-catkin-pkg-modules \
+    python3-pip \
+    python3-tk \
+    ros-kinetic-rqt* \
+    ros-kinetic-rviz \
+    dbus \
     && rm -rf /var/lib/apt/lists/*
+
+RUN dbus-uuidgen > /etc/machine-id
 
 # Update rosdep (already initialized in base image)
 RUN rosdep update
@@ -36,10 +48,20 @@ WORKDIR /root/sim_ws
 RUN catkin init && \
     catkin config --extend /opt/ros/kinetic --cmake-args -DCMAKE_BUILD_TYPE=Release
 
+# Copy ESIM repo into container
 COPY . src/rpg_esim/.
+
+# Import additional dependencies
 WORKDIR /root/sim_ws/src
 RUN vcs-import < rpg_esim/dependencies.yaml
 
+# Patch SIMD flags if on ARM (e.g., macOS M1/M2)
+RUN if [ "$(uname -m)" = "aarch64" ] || [ "$(uname -m)" = "arm64" ]; then \
+    echo "Patching SIMD flags for ARM architecture..."; \
+    sed -i '20,25 s/^/#/' /root/sim_ws/src/ze_oss/ze_cmake/cmake/modules/ze_setup.cmake; \
+    fi
+
+# Disable components we don't need
 WORKDIR /root/sim_ws/src/ze_oss
 RUN touch imp_3rdparty_cuda_toolkit/CATKIN_IGNORE \
     imp_app_pangolin_example/CATKIN_IGNORE \
@@ -56,12 +78,13 @@ RUN touch imp_3rdparty_cuda_toolkit/CATKIN_IGNORE \
     ze_trajectory_analysis/CATKIN_IGNORE
 
 WORKDIR /root/sim_ws
+
+# build automatically
 RUN catkin build esim_ros
 
-RUN echo "source ~/sim_ws/devel/setup.bash" >> ~/setupeventsim.sh
-RUN chmod +x ~/setupeventsim.sh
-RUN alias ssim='source ~/setupeventsim.sh'
-
-WORKDIR /root
+# add shortcut to source the environment
+RUN echo "source ~/sim_ws/devel/setup.bash" >> ~/setupeventsim.sh && \
+    chmod +x ~/setupeventsim.sh && \
+    echo "alias ssim='source ~/setupeventsim.sh'" >> ~/.bashrc
 
 CMD ["bash"]
