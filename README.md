@@ -1,5 +1,37 @@
 # ESIM: an Open Event Camera Simulator
 
+## Andreu quick guide:
+Build docker image
+```
+bash build_docker.sh
+```
+
+Run docker container (Terminal T1)
+```
+bash docker_env/run_docker_local.sh
+```
+
+Connect to docker container (Terminal T2)
+```
+docker exec -it andreu_rpg_esim bash
+```
+
+T1
+```
+ssim
+roslaunch esim_ros esim.launch config:=cfg/example.conf
+```
+
+T2
+```
+ssim
+roscd esim_visualization
+rqt --perspective-file cfg/esim.perspective
+```
+
+
+
+
 [![ESIM: an Open Event Camera Simulator](http://rpg.ifi.uzh.ch/esim/img/youtube_preview.png)](https://youtu.be/ytKOIX_2clo)
 
 This is the code for the 2018 CoRL paper **ESIM: an Open Event Camera Simulator** by [Henri Rebecq](http://henri.rebecq.fr), [Daniel Gehrig](https://danielgehrig18.github.io/) and [Davide Scaramuzza](http://rpg.ifi.uzh.ch/people_scaramuzza.html):
